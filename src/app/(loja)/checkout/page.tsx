@@ -66,9 +66,8 @@ export default function CheckoutPage() {
         deliveryAddress: address,
         paymentMethod: payment,
         notes,
-        deliveryFee,
+        zoneId: selectedZoneId || null,
         changeFor: payment === "CASH" ? changeFor : null,
-        zoneName: selectedZone?.name ?? null,
       }),
     });
 
