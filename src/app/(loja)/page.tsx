@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import Link from "next/link";
-import { ShoppingCart, Plus, Minus, Search, User, LogOut } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Search, User, LogOut, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
@@ -15,6 +15,63 @@ type Product = {
 };
 type Announcement = { id: string; title: string; content?: string; type: string };
 type Config = { marketName: string; estimatedMinutes: number; isDeliveryActive: boolean; fee: number };
+
+function ProductCard({ product, qty, onAdd, onInc, onDec }: {
+  product: Product;
+  qty: number;
+  onAdd: () => void;
+  onInc: () => void;
+  onDec: () => void;
+}) {
+  const displayPrice = product.promotionalPrice ?? product.price;
+  const discount = product.promotionalPrice
+    ? Math.round((1 - product.promotionalPrice / product.price) * 100)
+    : 0;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="aspect-square bg-gray-100 relative">
+        {product.imageUrl ? (
+          <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl">🛒</div>
+        )}
+        {product.promotionalPrice && (
+          <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-lg">
+            -{discount}%
+          </span>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">{product.name}</p>
+        <div className="mt-1">
+          {product.promotionalPrice && (
+            <p className="text-xs text-gray-400 line-through">{formatCurrency(product.price)}</p>
+          )}
+          <p className="text-green-700 font-bold">{formatCurrency(displayPrice)}</p>
+        </div>
+        <div className="mt-2">
+          {qty === 0 ? (
+            <button onClick={onAdd}
+              className="w-full flex items-center justify-center gap-1.5 bg-green-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-green-700 transition">
+              <Plus size={14} /> Adicionar
+            </button>
+          ) : (
+            <div className="flex items-center justify-between bg-green-50 rounded-xl px-2 py-1">
+              <button onClick={onDec} className="p-1 rounded-lg hover:bg-green-100">
+                <Minus size={14} className="text-green-700" />
+              </button>
+              <span className="text-sm font-bold text-green-700">{qty}</span>
+              <button onClick={onInc} className="p-1 rounded-lg hover:bg-green-100">
+                <Plus size={14} className="text-green-700" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { items, addItem, updateQty, count, total } = useCart();
@@ -44,6 +101,8 @@ export default function HomePage() {
   function getQty(id: string) {
     return items.find((i) => i.productId === id)?.quantity ?? 0;
   }
+
+  const promos = products.filter((p) => p.promotionalPrice && p.stock > 0);
 
   const filtered = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
@@ -89,7 +148,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-5">
         {/* Announcements */}
         {announcements.map((a) => (
           <div key={a.id} className={`border rounded-xl px-4 py-3 text-sm ${typeColor[a.type] ?? "bg-gray-50 border-gray-200"}`}>
@@ -97,6 +156,40 @@ export default function HomePage() {
             {a.content && <p className="mt-0.5 opacity-80">{a.content}</p>}
           </div>
         ))}
+
+        {/* Promoções do Dia */}
+        {promos.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <Tag size={18} className="text-red-500" />
+              <h2 className="font-bold text-gray-900 text-base">Promoções do Dia</h2>
+              <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                {promos.length} {promos.length === 1 ? "oferta" : "ofertas"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {promos.map((product) => {
+                const qty = getQty(product.id);
+                const displayPrice = product.promotionalPrice ?? product.price;
+                return (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    qty={qty}
+                    onAdd={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })}
+                    onInc={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })}
+                    onDec={() => updateQty(product.id, qty - 1)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Divisor */}
+        {promos.length > 0 && (
+          <div className="border-t border-gray-200" />
+        )}
 
         {/* Search */}
         <div className="relative">
@@ -119,61 +212,32 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Products grid */}
-        {filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">Nenhum produto encontrado.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filtered.map((product) => {
-              const qty = getQty(product.id);
-              const displayPrice = product.promotionalPrice ?? product.price;
-              return (
-                <div key={product.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="aspect-square bg-gray-100 relative">
-                    {product.imageUrl ? (
-                      <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-4xl">🛒</div>
-                    )}
-                    {product.promotionalPrice && (
-                      <span className="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-lg">
-                        OFF
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">{product.name}</p>
-                    <div className="mt-1">
-                      {product.promotionalPrice && (
-                        <p className="text-xs text-gray-400 line-through">{formatCurrency(product.price)}</p>
-                      )}
-                      <p className="text-green-700 font-bold">{formatCurrency(displayPrice)}</p>
-                    </div>
-                    <div className="mt-2">
-                      {qty === 0 ? (
-                        <button
-                          onClick={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })}
-                          className="w-full flex items-center justify-center gap-1.5 bg-green-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-green-700 transition">
-                          <Plus size={14} /> Adicionar
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-between bg-green-50 rounded-xl px-2 py-1">
-                          <button onClick={() => updateQty(product.id, qty - 1)} className="p-1 rounded-lg hover:bg-green-100">
-                            <Minus size={14} className="text-green-700" />
-                          </button>
-                          <span className="text-sm font-bold text-green-700">{qty}</span>
-                          <button onClick={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })} className="p-1 rounded-lg hover:bg-green-100">
-                            <Plus size={14} className="text-green-700" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* All products grid */}
+        <section>
+          <h2 className="font-bold text-gray-900 text-base mb-3">
+            {search || category !== "ALL" ? "Resultados" : "Todos os Produtos"}
+          </h2>
+          {filtered.length === 0 ? (
+            <p className="text-center text-gray-400 py-12 text-sm">Nenhum produto encontrado.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {filtered.map((product) => {
+                const qty = getQty(product.id);
+                const displayPrice = product.promotionalPrice ?? product.price;
+                return (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    qty={qty}
+                    onAdd={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })}
+                    onInc={() => addItem({ productId: product.id, name: product.name, price: displayPrice, imageUrl: product.imageUrl })}
+                    onDec={() => updateQty(product.id, qty - 1)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Floating cart */}
