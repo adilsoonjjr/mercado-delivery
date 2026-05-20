@@ -242,7 +242,7 @@ export default function HomePage() {
 
       {/* Floating cart */}
       {count > 0 && (
-        <div className="fixed bottom-6 left-0 right-0 flex justify-center px-4 z-20">
+        <div className="fixed bottom-0 left-0 right-0 flex justify-center px-4 z-20 pb-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <Link href="/carrinho"
             className="flex items-center justify-between bg-green-600 text-white rounded-2xl px-5 py-4 w-full max-w-sm shadow-lg hover:bg-green-700 transition">
             <div className="flex items-center gap-2">

@@ -30,26 +30,29 @@ function StatusTimeline({ status }: { status: string }) {
   }
   const currentIdx = STEPS.findIndex((s) => s.status === status);
   return (
-    <div className="flex items-center gap-0">
-      {STEPS.map((step, idx) => {
-        const done = idx <= currentIdx;
-        const Icon = step.icon;
-        return (
-          <div key={step.status} className="flex items-center">
-            <div className={`flex flex-col items-center gap-1 ${idx === currentIdx ? "scale-110" : ""}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${done ? "bg-green-600" : "bg-gray-200"}`}>
-                <Icon size={13} className={done ? "text-white" : "text-gray-400"} />
+    <div className="overflow-x-auto -mx-1 px-1 pb-1">
+      <div className="flex items-start gap-0 min-w-max">
+        {STEPS.map((step, idx) => {
+          const done = idx <= currentIdx;
+          const active = idx === currentIdx;
+          const Icon = step.icon;
+          return (
+            <div key={step.status} className="flex items-start">
+              <div className={`flex flex-col items-center gap-1.5 w-14 ${active ? "opacity-100" : ""}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${done ? "bg-green-600" : "bg-gray-200"} ${active ? "ring-2 ring-green-300 ring-offset-1" : ""}`}>
+                  <Icon size={15} className={done ? "text-white" : "text-gray-400"} />
+                </div>
+                <p className={`text-[10px] text-center leading-tight font-medium w-full ${done ? "text-green-700" : "text-gray-400"}`}>
+                  {step.label}
+                </p>
               </div>
-              <p className={`text-[9px] text-center max-w-[48px] leading-tight font-medium ${done ? "text-green-700" : "text-gray-400"}`}>
-                {step.label}
-              </p>
+              {idx < STEPS.length - 1 && (
+                <div className={`h-0.5 w-5 mt-4 mx-0.5 shrink-0 ${idx < currentIdx ? "bg-green-500" : "bg-gray-200"}`} />
+              )}
             </div>
-            {idx < STEPS.length - 1 && (
-              <div className={`h-0.5 w-4 mb-4 mx-0.5 ${idx < currentIdx ? "bg-green-500" : "bg-gray-200"}`} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

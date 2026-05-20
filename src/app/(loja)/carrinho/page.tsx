@@ -93,7 +93,7 @@ export default function CarrinhoPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <div className="max-w-lg mx-auto">
           <Link
             href={belowMin ? "#" : "/checkout"}

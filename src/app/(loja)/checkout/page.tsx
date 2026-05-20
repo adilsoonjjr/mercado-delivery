@@ -216,7 +216,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <div className="max-w-lg mx-auto">
             <button type="submit" disabled={loading}
               className="w-full bg-green-600 text-white rounded-2xl py-4 font-bold hover:bg-green-700 transition disabled:opacity-60 flex items-center justify-center gap-2">
