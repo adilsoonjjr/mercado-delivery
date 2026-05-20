@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import Link from "next/link";
-import { ShoppingCart, Plus, Minus, Search, User, LogOut, Tag } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Search, User, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 
 type Category = { id: string; name: string; emoji: string };
@@ -129,16 +129,19 @@ export default function HomePage() {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Link href="/carrinho" className="p-2 rounded-full hover:bg-gray-100 relative">
+              <ShoppingCart size={20} className="text-gray-600" />
+              {count > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-green-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
+            </Link>
             {session ? (
-              <div className="flex items-center gap-1">
-                <Link href="/meus-pedidos" className="p-2 rounded-full hover:bg-gray-100">
-                  <User size={20} className="text-gray-600" />
-                </Link>
-                <button onClick={() => signOut({ callbackUrl: "/" })} className="p-2 rounded-full hover:bg-gray-100">
-                  <LogOut size={18} className="text-gray-500" />
-                </button>
-              </div>
+              <Link href="/perfil" className="p-2 rounded-full hover:bg-gray-100">
+                <User size={20} className="text-gray-600" />
+              </Link>
             ) : (
               <Link href="/login" className="text-sm text-green-600 font-medium px-3 py-1.5 rounded-full hover:bg-green-50">
                 Entrar
