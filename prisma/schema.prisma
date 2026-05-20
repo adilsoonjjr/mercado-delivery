@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  cpf          String?
+  address      String?
+  role         String   @default("CUSTOMER")
+  createdAt    DateTime @default(now())
+  orders       Order[]
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String
+  emoji    String    @default("🛒")
+  products Product[]
+}
+
+model Product {
+  id               String      @id @default(cuid())
+  name             String
+  description      String?
+  price            Float
+  promotionalPrice Float?
+  stock            Int         @default(0)
+  imageUrl         String?
+  isActive         Boolean     @default(true)
+  categoryId       String?
+  category         Category?   @relation(fields: [categoryId], references: [id])
+  createdAt        DateTime    @default(now())
+  orderItems       OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  status          String      @default("PENDING")
+  subtotal        Float
+  deliveryFee     Float
+  total           Float
+  paymentMethod   String
+  changeFor       Float?
+  deliveryAddress String
+  zoneName        String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id])
+  productId    String
+  product      Product @relation(fields: [productId], references: [id])
+  productName  String
+  productPrice Float
+  quantity     Int
+  subtotal     Float
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  type      String   @default("info")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model DeliveryConfig {
+  id               String  @id @default(cuid())
+  fee              Float   @default(5.0)
+  minOrderValue    Float   @default(0)
+  estimatedMinutes Int     @default(45)
+  isDeliveryActive Boolean @default(true)
+  marketName       String  @default("Meu Mercado")
+  marketPhone      String  @default("")
+}
+
+model DeliveryZone {
+  id               String  @id @default(cuid())
+  name             String
+  fee              Float
+  estimatedMinutes Int     @default(45)
+  isActive         Boolean @default(true)
+}

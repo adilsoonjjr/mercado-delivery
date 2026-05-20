@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\adils\\\\mercado - Sas\\\\src\" -Recurse -File | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\"C:\\\\Users\\\\adils\\\\mercado - Sas\\\\\", \"\"\\) })",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:3000/api/zonas\" -Method Get)"
+    ]
+  }
+}
