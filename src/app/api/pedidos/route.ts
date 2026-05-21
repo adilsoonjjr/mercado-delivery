@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { publishNewOrder } from "@/lib/events";
+import { getCurrentMarket } from "@/lib/market";
 
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
+  const market = await getCurrentMarket();
+  if (!market) return NextResponse.json({ error: "Mercado não encontrado." }, { status: 404 });
+
   const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, marketId: market.id },
     include: { items: true },
     orderBy: { createdAt: "desc" },
   });
@@ -19,30 +23,32 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
+  const market = await getCurrentMarket();
+  if (!market) return NextResponse.json({ error: "Mercado não encontrado." }, { status: 404 });
+  if (market.status === "SUSPENDED") return NextResponse.json({ error: "Mercado temporariamente indisponível." }, { status: 503 });
+
   const { items, deliveryAddress, paymentMethod, notes, zoneId, changeFor } = await req.json();
 
   if (!items?.length || !deliveryAddress || !paymentMethod) {
     return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
   }
 
-  // Calculate delivery fee server-side — never trust client-provided value
   let deliveryFee = 0;
   let zoneName: string | null = null;
 
   if (zoneId) {
-    const zone = await prisma.deliveryZone.findFirst({ where: { id: zoneId, isActive: true } });
+    const zone = await prisma.deliveryZone.findFirst({ where: { id: zoneId, isActive: true, marketId: market.id } });
     if (!zone) return NextResponse.json({ error: "Zona de entrega inválida." }, { status: 400 });
     deliveryFee = zone.fee;
     zoneName = zone.name;
   } else {
-    const config = await prisma.deliveryConfig.findFirst();
+    const config = await prisma.deliveryConfig.findFirst({ where: { marketId: market.id } });
     deliveryFee = config?.fee ?? 0;
   }
 
-  // Fetch real prices from DB — never trust client-provided prices
   const productIds = items.map((i: { productId: string }) => i.productId);
   const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, isActive: true },
+    where: { id: { in: productIds }, isActive: true, marketId: market.id },
     select: { id: true, name: true, price: true, promotionalPrice: true, stock: true },
   });
 
@@ -70,6 +76,7 @@ export async function POST(req: Request) {
   const order = await prisma.order.create({
     data: {
       userId: session.user.id,
+      marketId: market.id,
       status: "PENDING",
       subtotal,
       deliveryFee,
@@ -79,9 +86,7 @@ export async function POST(req: Request) {
       deliveryAddress,
       zoneName: zoneName || null,
       notes: notes || null,
-      items: {
-        create: orderItems,
-      },
+      items: { create: orderItems },
     },
     include: {
       items: true,
@@ -89,7 +94,6 @@ export async function POST(req: Request) {
     },
   });
 
-  // Notify connected admin clients in real-time
   publishNewOrder(order as unknown as Record<string, unknown>);
 
   return NextResponse.json(order, { status: 201 });

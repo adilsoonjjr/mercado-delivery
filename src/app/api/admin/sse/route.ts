@@ -5,18 +5,19 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || session.user.role !== "ADMIN" || !session.user.marketId) {
     return new Response("Proibido", { status: 403 });
   }
 
   const id = crypto.randomUUID();
+  const marketId = session.user.marketId;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(": connected\n\n"));
 
-      const unsubscribe = subscribeAdmin(id, (data) => {
+      const unsubscribe = subscribeAdmin(id, marketId, (data) => {
         try {
           controller.enqueue(encoder.encode(data));
         } catch {

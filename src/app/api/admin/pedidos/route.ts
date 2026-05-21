@@ -4,9 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  if (!session || session.user.role !== "ADMIN" || !session.user.marketId) {
+    return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  }
 
   const orders = await prisma.order.findMany({
+    where: { marketId: session.user.marketId },
     include: {
       user: { select: { name: true, email: true, phone: true, cpf: true, address: true } },
       items: true,

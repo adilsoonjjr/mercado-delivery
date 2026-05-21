@@ -16,7 +16,7 @@ export const authConfig = {
         if (!user) return null;
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
+        return { id: user.id, name: user.name, email: user.email, role: user.role, marketId: user.marketId ?? undefined };
       },
     }),
   ],
@@ -25,12 +25,14 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.marketId = (user as { marketId?: string }).marketId;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.id as string;
       session.user.role = token.role as string;
+      session.user.marketId = token.marketId as string | undefined;
       return session;
     },
   },

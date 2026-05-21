@@ -4,9 +4,10 @@ import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import {
   ShoppingCart, Package, ClipboardList, Megaphone,
-  Settings, LogOut, LayoutDashboard, Users,
+  Settings, LogOut, LayoutDashboard, Users, QrCode,
 } from "lucide-react";
 import { AdminNotificationProvider } from "@/components/AdminNotificationProvider";
+import { prisma } from "@/lib/prisma";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -14,12 +15,32 @@ const navItems = [
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/clientes", label: "Clientes", icon: Users },
   { href: "/admin/anuncios", label: "Anúncios", icon: Megaphone },
+  { href: "/admin/compartilhar", label: "QR Code", icon: QrCode },
   { href: "/admin/configuracoes", label: "Config", icon: Settings },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") redirect("/");
+
+  // Check subscription / trial status
+  if (session.user.marketId) {
+    const market = await prisma.market.findUnique({ where: { id: session.user.marketId } });
+    if (market) {
+      const now = new Date();
+      // Auto-expire trial
+      if (market.status === "TRIAL" && market.trialEndsAt < now) {
+        await prisma.market.update({ where: { id: market.id }, data: { status: "SUSPENDED" } });
+        redirect("/suspenso");
+      }
+      if (market.status === "SUSPENDED") redirect("/suspenso");
+      // Expire paid subscription
+      if (market.status === "ACTIVE" && market.subscriptionExpiresAt && market.subscriptionExpiresAt < now) {
+        await prisma.market.update({ where: { id: market.id }, data: { status: "SUSPENDED" } });
+        redirect("/suspenso");
+      }
+    }
+  }
 
   return (
     <AdminNotificationProvider>

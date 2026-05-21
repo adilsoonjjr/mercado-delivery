@@ -4,20 +4,23 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") return null;
+  if (!session || session.user.role !== "ADMIN" || !session.user.marketId) return null;
   return session;
 }
 
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Proibido." }, { status: 403 });
-  const config = await prisma.deliveryConfig.findFirst();
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  const config = await prisma.deliveryConfig.findFirst({ where: { marketId: session.user.marketId } });
   return NextResponse.json(config ?? {});
 }
 
 export async function PUT(req: Request) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Proibido." }, { status: 403 });
   const data = await req.json();
-  const existing = await prisma.deliveryConfig.findFirst();
+  const marketId = session.user.marketId!;
+  const existing = await prisma.deliveryConfig.findFirst({ where: { marketId } });
 
   const config = existing
     ? await prisma.deliveryConfig.update({
@@ -31,7 +34,7 @@ export async function PUT(req: Request) {
           isDeliveryActive: data.isDeliveryActive,
         },
       })
-    : await prisma.deliveryConfig.create({ data });
+    : await prisma.deliveryConfig.create({ data: { ...data, marketId } });
 
   return NextResponse.json(config);
 }

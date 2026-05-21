@@ -6,6 +6,38 @@ datasource db {
   provider = "postgresql"
 }
 
+model Market {
+  id                    String    @id @default(cuid())
+  slug                  String    @unique
+  status                String    @default("TRIAL") // TRIAL | ACTIVE | SUSPENDED
+  trialEndsAt           DateTime
+  subscriptionExpiresAt DateTime?
+  createdAt             DateTime  @default(now())
+
+  users             User[]
+  products          Product[]
+  categories        Category[]
+  orders            Order[]
+  announcements     Announcement[]
+  configs           DeliveryConfig[]
+  zones             DeliveryZone[]
+  pushSubscriptions PushSubscription[]
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String?
+  marketId  String
+  market    Market   @relation(fields: [marketId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([marketId])
+  @@index([userId])
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -15,6 +47,8 @@ model User {
   cpf          String?
   address      String?
   role         String   @default("CUSTOMER")
+  marketId     String?
+  market       Market?  @relation(fields: [marketId], references: [id])
   createdAt    DateTime @default(now())
   orders       Order[]
 }
@@ -23,7 +57,11 @@ model Category {
   id       String    @id @default(cuid())
   name     String
   emoji    String    @default("🛒")
+  marketId String?
+  market   Market?   @relation(fields: [marketId], references: [id])
   products Product[]
+
+  @@index([marketId])
 }
 
 model Product {
@@ -37,8 +75,12 @@ model Product {
   isActive         Boolean     @default(true)
   categoryId       String?
   category         Category?   @relation(fields: [categoryId], references: [id])
+  marketId         String?
+  market           Market?     @relation(fields: [marketId], references: [id])
   createdAt        DateTime    @default(now())
   orderItems       OrderItem[]
+
+  @@index([marketId])
 }
 
 model Order {
@@ -54,9 +96,13 @@ model Order {
   deliveryAddress String
   zoneName        String?
   notes           String?
+  marketId        String?
+  market          Market?     @relation(fields: [marketId], references: [id])
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]
+
+  @@index([marketId])
 }
 
 model OrderItem {
@@ -77,7 +123,11 @@ model Announcement {
   content   String?
   type      String   @default("info")
   isActive  Boolean  @default(true)
+  marketId  String?
+  market    Market?  @relation(fields: [marketId], references: [id])
   createdAt DateTime @default(now())
+
+  @@index([marketId])
 }
 
 model DeliveryConfig {
@@ -88,6 +138,10 @@ model DeliveryConfig {
   isDeliveryActive Boolean @default(true)
   marketName       String  @default("Meu Mercado")
   marketPhone      String  @default("")
+  marketId         String?
+  market           Market? @relation(fields: [marketId], references: [id])
+
+  @@index([marketId])
 }
 
 model DeliveryZone {
@@ -96,4 +150,8 @@ model DeliveryZone {
   fee              Float
   estimatedMinutes Int     @default(45)
   isActive         Boolean @default(true)
+  marketId         String?
+  market           Market? @relation(fields: [marketId], references: [id])
+
+  @@index([marketId])
 }

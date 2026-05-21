@@ -20,9 +20,22 @@ export default auth((req) => {
     }
   }
 
-  return NextResponse.next();
+  // Resolve market slug from subdomain and pass via header
+  const hostname = req.headers.get("host") ?? "";
+  const envSlug = process.env.MARKET_SLUG;
+  let slug: string;
+  if (envSlug) {
+    slug = envSlug;
+  } else {
+    const parts = hostname.split(".");
+    slug = parts.length >= 3 ? parts[0] : "default";
+  }
+
+  const res = NextResponse.next();
+  res.headers.set("x-market-slug", slug);
+  return res;
 });
 
 export const config = {
-  matcher: ["/admin/:path*", "/checkout", "/meus-pedidos"],
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico).*)"],
 };

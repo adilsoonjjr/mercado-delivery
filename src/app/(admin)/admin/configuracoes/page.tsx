@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Save, Plus, Pencil, Trash2, X, MapPin } from "lucide-react";
+import { Loader2, Save, Plus, Pencil, Trash2, X, MapPin, Lock, Mail } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { QRCodeCard } from "@/components/QRCodeCard";
 
 type Config = {
   id?: string;
@@ -31,6 +32,15 @@ export default function AdminConfiguracoes() {
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [zoneForm, setZoneForm] = useState(emptyZone);
   const [savingZone, setSavingZone] = useState(false);
+
+  // Conta admin
+  const [emailForm, setEmailForm] = useState({ currentPassword: "", newEmail: "" });
+  const [emailMsg, setEmailMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [savingPw, setSavingPw] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/config").then((r) => r.json()).then(setConfig);
@@ -84,6 +94,48 @@ export default function AdminConfiguracoes() {
     if (!confirm("Remover zona de entrega?")) return;
     await fetch(`/api/admin/zonas/${id}`, { method: "DELETE" });
     loadZones();
+  }
+
+  async function handleChangeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingEmail(true);
+    setEmailMsg(null);
+    const res = await fetch("/api/admin/conta", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: emailForm.currentPassword, newEmail: emailForm.newEmail }),
+    });
+    const data = await res.json();
+    setSavingEmail(false);
+    if (res.ok) {
+      setEmailMsg({ ok: true, text: "E-mail atualizado! Faça login novamente." });
+      setEmailForm({ currentPassword: "", newEmail: "" });
+    } else {
+      setEmailMsg({ ok: false, text: data.error });
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwMsg({ ok: false, text: "As senhas não coincidem." });
+      return;
+    }
+    setSavingPw(true);
+    setPwMsg(null);
+    const res = await fetch("/api/admin/conta", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+    });
+    const data = await res.json();
+    setSavingPw(false);
+    if (res.ok) {
+      setPwMsg({ ok: true, text: "Senha alterada com sucesso!" });
+      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } else {
+      setPwMsg({ ok: false, text: data.error });
+    }
   }
 
   async function toggleZone(z: Zone) {
@@ -201,6 +253,104 @@ export default function AdminConfiguracoes() {
           </div>
         )}
       </div>
+
+      {/* QR Code */}
+      <QRCodeCard />
+
+      {/* Alterar e-mail */}
+      <form onSubmit={handleChangeEmail} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Mail size={16} className="text-green-600" />
+          <h2 className="font-semibold text-gray-900">Alterar e-mail de acesso</h2>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+          <input
+            type="password"
+            required
+            value={emailForm.currentPassword}
+            onChange={(e) => setEmailForm((f) => ({ ...f, currentPassword: e.target.value }))}
+            placeholder="••••••••"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Novo e-mail</label>
+          <input
+            type="email"
+            required
+            value={emailForm.newEmail}
+            onChange={(e) => setEmailForm((f) => ({ ...f, newEmail: e.target.value }))}
+            placeholder="novo@email.com"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        {emailMsg && (
+          <p className={`text-sm ${emailMsg.ok ? "text-green-600" : "text-red-500"}`}>{emailMsg.text}</p>
+        )}
+        <button
+          type="submit"
+          disabled={savingEmail}
+          className="w-full bg-green-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-green-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {savingEmail ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+          Salvar novo e-mail
+        </button>
+      </form>
+
+      {/* Alterar senha */}
+      <form onSubmit={handleChangePassword} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Lock size={16} className="text-green-600" />
+          <h2 className="font-semibold text-gray-900">Alterar senha de acesso</h2>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+          <input
+            type="password"
+            required
+            value={pwForm.currentPassword}
+            onChange={(e) => setPwForm((f) => ({ ...f, currentPassword: e.target.value }))}
+            placeholder="••••••••"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            value={pwForm.newPassword}
+            onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
+            placeholder="Mínimo 8 caracteres"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            value={pwForm.confirmPassword}
+            onChange={(e) => setPwForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+            placeholder="Repita a nova senha"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        {pwMsg && (
+          <p className={`text-sm ${pwMsg.ok ? "text-green-600" : "text-red-500"}`}>{pwMsg.text}</p>
+        )}
+        <button
+          type="submit"
+          disabled={savingPw}
+          className="w-full bg-green-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-green-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {savingPw ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
+          Alterar senha
+        </button>
+      </form>
 
       {/* Modal zona */}
       {zoneModal && (

@@ -4,13 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") return null;
+  if (!session || session.user.role !== "ADMIN" || !session.user.marketId) return null;
   return session;
 }
 
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Proibido." }, { status: 403 });
   const products = await prisma.product.findMany({
+    where: { marketId: session.user.marketId },
     include: { category: true },
     orderBy: { name: "asc" },
   });
@@ -18,7 +20,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Proibido." }, { status: 403 });
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Proibido." }, { status: 403 });
   const data = await req.json();
   const product = await prisma.product.create({
     data: {
@@ -30,6 +33,7 @@ export async function POST(req: Request) {
       imageUrl: data.imageUrl || null,
       isActive: data.isActive ?? true,
       categoryId: data.categoryId || null,
+      marketId: session.user.marketId,
     },
   });
   return NextResponse.json(product, { status: 201 });

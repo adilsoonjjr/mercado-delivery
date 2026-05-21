@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, Bell, Send } from "lucide-react";
 
 type Announcement = { id: string; title: string; content?: string; type: string; isActive: boolean; createdAt: string };
 
 const empty = { title: "", content: "", type: "info", isActive: true };
+const emptyNotif = { title: "", body: "", url: "" };
 
 export default function AdminAnuncios() {
   const [items, setItems] = useState<Announcement[]>([]);
@@ -13,6 +14,9 @@ export default function AdminAnuncios() {
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [notifForm, setNotifForm] = useState(emptyNotif);
+  const [sending, setSending] = useState(false);
+  const [notifResult, setNotifResult] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/admin/anuncios");
@@ -46,6 +50,28 @@ export default function AdminAnuncios() {
     load();
   }
 
+  async function handleNotify() {
+    if (!notifForm.title || !notifForm.body) return;
+    setSending(true);
+    setNotifResult(null);
+    try {
+      const res = await fetch("/api/admin/notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(notifForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotifResult(`Notificação enviada para ${data.sent} dispositivo(s).`);
+        setNotifForm(emptyNotif);
+      } else {
+        setNotifResult(data.error ?? "Erro ao enviar.");
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
   const typeColor: Record<string, string> = {
     info: "bg-blue-100 text-blue-800",
     promo: "bg-green-100 text-green-800",
@@ -53,7 +79,52 @@ export default function AdminAnuncios() {
   };
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-3xl space-y-8">
+      {/* Push notification card */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
+            <Bell size={15} className="text-green-600" />
+          </div>
+          <h2 className="font-semibold text-gray-900">Notificar clientes</h2>
+        </div>
+        <div className="space-y-3">
+          <input
+            placeholder="Título da notificação *"
+            value={notifForm.title}
+            onChange={(e) => setNotifForm((f) => ({ ...f, title: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <textarea
+            placeholder="Mensagem *"
+            value={notifForm.body}
+            onChange={(e) => setNotifForm((f) => ({ ...f, body: e.target.value }))}
+            rows={2}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+          />
+          <input
+            placeholder="Link (opcional, ex: /promos)"
+            value={notifForm.url}
+            onChange={(e) => setNotifForm((f) => ({ ...f, url: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleNotify}
+              disabled={sending || !notifForm.title || !notifForm.body}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition"
+            >
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {sending ? "Enviando..." : "Enviar notificação"}
+            </button>
+            {notifResult && (
+              <p className="text-sm text-gray-600">{notifResult}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Anúncios & Novidades</h1>
         <button onClick={openAdd} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700">
@@ -129,6 +200,7 @@ export default function AdminAnuncios() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
